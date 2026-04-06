@@ -155,7 +155,7 @@ k6.markdown(get_kpi_card("Total Alumnos", df_f['ID'].nunique(), "#666666"), unsa
 k7.markdown(get_kpi_card("Docentes", df_f['Nombre catedrático'].nunique(), "#666666"), unsafe_allow_html=True)
 k8.markdown(get_kpi_card("Materias", df_f['Nombre Asignatura'].nunique(), "#666666"), unsafe_allow_html=True)
 
-st.markdown("---")
+
 
 # --- CONFIGURACIÓN DE GEMINI ---
 # En Streamlit Cloud, guarda tu llave en 'Settings > Secrets' como GEMINI_API_KEY
@@ -202,6 +202,7 @@ if user_query:
             st.info(response.text)
         except Exception as e:
             st.error(f"Hubo un error con la IA: {e}")
+st.markdown("---")
 
 # --- GRÁFICA DE AUSENTISMO (TEXTO BLANCO SOBRE BARRAS) ---
 st.markdown("### 📊 Reporte de Ausentismo por Docente y Parcial")
