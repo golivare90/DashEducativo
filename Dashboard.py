@@ -193,15 +193,29 @@ if user_query:
         """
         
         try:
-            # NUEVA SINTAXIS: client.models.generate_content
+            # Llamada al modelo
             response = client.models.generate_content(
-                model='gemini-2.0-flash', 
+                model='gemini-2.5-flash', 
                 contents=prompt
             )
             st.markdown(f"**Respuesta de la IA:**")
             st.info(response.text)
+            
         except Exception as e:
-            st.error(f"Hubo un error con la comunicación de la IA: {e}")
+            # DETALLE FINO: Capturamos el error de cuota agotada (429)
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                st.warning("✨ **La IA está tomando un breve respiro.**")
+                st.markdown("""
+                    <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; border-left: 5px solid #ffc107;">
+                        <p style="color: #856404; margin: 0;">
+                            <b>Nota Institucional:</b> El Consultor Académico ha alcanzado su límite de consultas gratuitas por este minuto. 
+                            Por favor, <b>espera 60 segundos</b> y vuelve a intentar tu pregunta. 
+                        </p>
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                # Otros errores (conexión, etc.)
+                st.error(f"Lo sentimos, hubo un inconveniente técnico: {e}")
 st.markdown("---")
 
 # --- GRÁFICA DE AUSENTISMO (TEXTO BLANCO SOBRE BARRAS) ---
