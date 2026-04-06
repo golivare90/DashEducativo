@@ -6,7 +6,7 @@ from scipy.stats import pearsonr
 from google import genai
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(layout="wide", page_title="Dashboard Educativo | UPAEP", page_icon="🔴")
+st.set_page_config(layout="wide", page_title="Dashboard Educativo | UPAEP", page_icon="https://www.upaep.mx/favicon.ico")
 
 # --- CSS: ESTÉTICA UNIFICADA Y ALTO CONTRASTE ---
 st.markdown("""
