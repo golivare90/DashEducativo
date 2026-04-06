@@ -161,7 +161,6 @@ k8.markdown(get_kpi_card("Materias", df_f['Nombre Asignatura'].nunique(), "#6666
 # En Streamlit Cloud, guarda tu llave en 'Settings > Secrets' como GEMINI_API_KEY
 # --- CONFIGURACIÓN DE GEMINI (SDK v2 2026) ---
 if "GEMINI_API_KEY" in st.secrets:
-    # IMPORTANTE: El nuevo SDK usa Client, no .configure()
     client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 else:
     st.warning("⚠️ Configura la GEMINI_API_KEY en los Secrets de Streamlit para activar la IA.")
@@ -169,12 +168,26 @@ else:
 st.markdown("---")
 st.markdown("### 🤖 Consultor Académico Inteligente")
 st.caption("Powered by Gemini 2.5 - Consulta directa sobre los datos filtrados")
-user_query = st.text_input("Hazle una pregunta a la IA sobre estos datos:", 
-                          placeholder="Ej: ¿Quién es el alumno con más faltas y cuál es su promedio?")
 
-if user_query:
+# 1. INICIALIZAR LA MEMORIA (Session State)
+# Esto evita que la respuesta se borre al interactuar con otros filtros del dashboard
+if "ultima_respuesta" not in st.session_state:
+    st.session_state.ultima_respuesta = None
+
+# 2. CREAR UN FORMULARIO (Evita disparos accidentales)
+with st.form("gemini_rag_form"):
+    user_query = st.text_input(
+        "Hazle una pregunta a la IA sobre estos datos:", 
+        placeholder="Ej: ¿Quién es el alumno con más faltas y cuál es su promedio?"
+    )
+    
+    # Botón obligatorio para enviar el formulario
+    submit_button = st.form_submit_button("Consultar con Gemini 🚀")
+
+# 3. LÓGICA DE EJECUCIÓN (Solo ocurre al presionar el botón)
+if submit_button and user_query:
     with st.spinner("Consultando con Gemini..."):
-        # Contexto de datos
+        # Contexto de datos basado en lo que está filtrado actualmente
         contexto_datos = df_f[['Alumno_Full', 'Nombre catedrático', 'Nombre Asignatura', 'CF.', 'Total_Faltas', '%Asis']].to_csv(index=False)
         
         prompt = f"""
@@ -193,29 +206,40 @@ if user_query:
         """
         
         try:
-            # Llamada al modelo
+            # Llamada al modelo (Gemini 2.5 Flash)
             response = client.models.generate_content(
                 model='gemini-2.5-flash', 
                 contents=prompt
             )
-            st.markdown(f"**Respuesta de la IA:**")
-            st.info(response.text)
+            # Guardamos el resultado en la memoria de la sesión
+            st.session_state.ultima_respuesta = response.text
             
         except Exception as e:
-            # DETALLE FINO: Capturamos el error de cuota agotada (429)
             if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                st.warning("✨ **La IA está tomando un breve respiro.**")
-                st.markdown("""
-                    <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; border-left: 5px solid #ffc107;">
-                        <p style="color: #856404; margin: 0;">
-                            <b>Nota Institucional:</b> El Consultor Académico ha alcanzado su límite de consultas gratuitas por este minuto. 
-                            Por favor, <b>espera 60 segundos</b> y vuelve a intentar tu pregunta. 
-                        </p>
-                    </div>
-                """, unsafe_allow_html=True)
+                # Guardamos el mensaje de error "bonito" en la sesión también
+                st.session_state.ultima_respuesta = "ERROR_429"
             else:
-                # Otros errores (conexión, etc.)
-                st.error(f"Lo sentimos, hubo un inconveniente técnico: {e}")
+                st.session_state.ultima_respuesta = f"ERROR_TECNICO: {e}"
+
+# 4. DESPLEGAR LA RESPUESTA (Desde la memoria)
+# Esto se ejecuta siempre, pero solo muestra contenido si hay algo en st.session_state
+if st.session_state.ultima_respuesta:
+    if st.session_state.ultima_respuesta == "ERROR_429":
+        st.warning("✨ **La IA está tomando un breve respiro.**")
+        st.markdown("""
+            <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; border-left: 5px solid #ffc107;">
+                <p style="color: #856404; margin: 0;">
+                    <b>Nota Institucional:</b> El Consultor ha alcanzado su límite de consultas gratuitas. 
+                    Por favor, <b>espera 60 segundos</b> y vuelve a presionar el botón. 
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+    elif st.session_state.ultima_respuesta.startswith("ERROR_TECNICO"):
+        st.error(f"Lo sentimos, hubo un inconveniente técnico: {st.session_state.ultima_respuesta}")
+    else:
+        st.markdown(f"**Respuesta de la IA:**")
+        st.info(st.session_state.ultima_respuesta)
+
 st.markdown("---")
 
 # --- GRÁFICA DE AUSENTISMO (TEXTO BLANCO SOBRE BARRAS) ---
