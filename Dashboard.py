@@ -159,24 +159,22 @@ k8.markdown(get_kpi_card("Materias", df_f['Nombre Asignatura'].nunique(), "#6666
 
 # --- CONFIGURACIÓN DE GEMINI ---
 # En Streamlit Cloud, guarda tu llave en 'Settings > Secrets' como GEMINI_API_KEY
+# --- CONFIGURACIÓN DE GEMINI (SDK v2 2026) ---
 if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    # IMPORTANTE: El nuevo SDK usa Client, no .configure()
+    client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 else:
     st.warning("⚠️ Configura la GEMINI_API_KEY en los Secrets de Streamlit para activar la IA.")
 
 st.markdown("---")
 st.markdown("### 🤖 Consultor Académico Inteligente")
-st.caption("Powered by Gemini - Consulta directa sobre los datos filtrados")
-
-# Input del usuario
+st.caption("Powered by Gemini 2.5 - Consulta directa sobre los datos filtrados")
 user_query = st.text_input("Hazle una pregunta a la IA sobre estos datos:", 
                           placeholder="Ej: ¿Quién es el alumno con más faltas y cuál es su promedio?")
 
 if user_query:
     with st.spinner("Consultando con Gemini..."):
-        # Preparamos el contexto: convertimos el dataframe filtrado a un string compacto
-        # Solo enviamos columnas relevantes para ahorrar tokens
+        # Contexto de datos
         contexto_datos = df_f[['Alumno_Full', 'Nombre catedrático', 'Nombre Asignatura', 'CF.', 'Total_Faltas', '%Asis']].to_csv(index=False)
         
         prompt = f"""
@@ -190,18 +188,20 @@ if user_query:
         {user_query}
         
         INSTRUCCIONES:
-        1. Responde de forma ejecutiva y precisa basándote SOLO en los datos proporcionados.
-        2. Si la pregunta implica cálculos (como quién tiene más faltas), realízalos mentalmente antes de responder.
-        3. Si no encuentras la información, dilo cordialmente.
-        4. Usa un tono profesional y analítico.
+        1. Responde de forma ejecutiva basándote SOLO en los datos proporcionados.
+        2. Usa un tono profesional y analítico.
         """
         
         try:
-            response = model.generate_content(prompt)
+            # NUEVA SINTAXIS: client.models.generate_content
+            response = client.models.generate_content(
+                model='gemini-2.0-flash', 
+                contents=prompt
+            )
             st.markdown(f"**Respuesta de la IA:**")
             st.info(response.text)
         except Exception as e:
-            st.error(f"Hubo un error con la IA: {e}")
+            st.error(f"Hubo un error con la comunicación de la IA: {e}")
 st.markdown("---")
 
 # --- GRÁFICA DE AUSENTISMO (TEXTO BLANCO SOBRE BARRAS) ---
