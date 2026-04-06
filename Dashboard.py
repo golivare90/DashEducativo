@@ -192,7 +192,7 @@ if "GEMINI_API_KEY" in st.secrets:
             contexto = df_f[['Alumno_Full', 'Nombre catedrático', 'Nombre Asignatura', 'CF.', 'Total_Faltas', '%Asis', 'P1', 'P2', 'P3']].to_csv(index=False)
             prompt = f"Analista UPAEP. Datos: {contexto}. Pregunta: {user_query}. Si hay foco, añade al final [TAG: Nombre Exacto]."
             try:
-                response = client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
+                response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
                 txt = response.text
                 if "[TAG:" in txt:
                     tag = txt.split("[TAG:")[1].split("]")[0].strip()
