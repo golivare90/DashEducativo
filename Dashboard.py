@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import os
 from scipy.stats import pearsonr
-import google.generativeai as genai
+from google import genai # Cambio en la importación
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(layout="wide", page_title="Dashboard Educativo | UPAEP", page_icon="🔴")
