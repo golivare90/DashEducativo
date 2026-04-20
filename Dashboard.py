@@ -178,37 +178,60 @@ with k10:
 k11.markdown(get_kpi_card("Eficiencia", f"{(df_f['CF.'] >= 6).mean()*100:.1f}%", "#666666", "Aprobados / Total", "Productividad del proceso de enseñanza.", "N/A"), unsafe_allow_html=True)
 k12.markdown(get_kpi_card("Decanatos", df_f['Descripción Decanato'].nunique(), "#666666", "Count(Decanato) únicos", "Alcance administrativo.", "N/A"), unsafe_allow_html=True)
 
-# --- CONSULTOR GEMINI ---
+# --- CONSULTOR GEMINI CON FAILOVER ESTRATÉGICO ---
 if "GEMINI_API_KEY" in st.secrets:
     client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
     st.markdown("---")
     st.markdown("### 🤖 Consultor Académico Inteligente")
+    
     with st.form("gemini_form"):
         user_query = st.text_input("Hazle una pregunta a la IA:", placeholder="Ej: ¿Qué materia tiene más alumnos en zona gris?")
         submit = st.form_submit_button("Consultar y Ajustar Dashboard 🚀")
 
     if submit and user_query:
-        with st.spinner("Analizando con ojo crítico..."):
+        with st.spinner("Analizando con resiliencia de Cloud Architect..."):
             contexto = df_f[['Alumno_Full', 'Nombre catedrático', 'Nombre Asignatura', 'CF.', 'Total_Faltas', '%Asis', 'P1', 'P2', 'P3']].to_csv(index=False)
             prompt = f"Analista UPAEP. Datos: {contexto}. Pregunta: {user_query}. Si hay foco, añade al final [TAG: Nombre Exacto]."
-            try:
-                response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+            
+            # Stack de modelos (Prioridad según doctor.py)
+            model_stack = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest']
+            response = None
+            
+            for model_name in model_stack:
+                try:
+                    # Intento de ejecución con el modelo actual
+                    response = client.models.generate_content(model=model_name, contents=prompt)
+                    break  # Si tiene éxito, rompemos el loop
+                except Exception as e:
+                    error_msg = str(e).upper()
+                    # Si es saturación o cuota, intentamos el que sigue
+                    if any(x in error_msg for x in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"]):
+                        continue 
+                    else:
+                        st.session_state.ultima_respuesta = f"Error crítico en {model_name}: {e}"
+                        break
+
+            if response:
                 txt = response.text
                 if "[TAG:" in txt:
                     tag = txt.split("[TAG:")[1].split("]")[0].strip()
+                    # Lógica de filtrado automático
                     if tag in lista_alum_m: st.session_state.sel_alum = [tag]
                     elif tag in lista_profes_m: st.session_state.sel_profes = [tag]
                     elif tag in lista_asig_m: st.session_state.sel_asig = [tag]
+                    
                     st.session_state.ultima_respuesta = txt.split("[TAG:")[0]
                     st.rerun()
-                else: st.session_state.ultima_respuesta = txt
-            except Exception as e:
-                st.session_state.ultima_respuesta = "ERROR_429" if "429" in str(e) else f"Error: {e}"
+                else:
+                    st.session_state.ultima_respuesta = txt
+            elif not st.session_state.ultima_respuesta:
+                st.session_state.ultima_respuesta = "⚠️ Todos los modelos de Google están saturados en este momento."
 
     if st.session_state.ultima_respuesta:
-        if st.session_state.ultima_respuesta == "ERROR_429": st.warning("IA en pausa. Espera 60s.")
-        else: st.info(st.session_state.ultima_respuesta)
-else: st.error("Falta API Key.")
+        st.info(st.session_state.ultima_respuesta)
+
+else:
+    st.error("Falta API Key en los Secrets de Streamlit.")
 
 st.markdown("---")
 
