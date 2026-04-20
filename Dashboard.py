@@ -287,13 +287,21 @@ def build_pdf(texto, figuras, kpis, filtros):
         pdf.cell(0, 9, "  Visualizaciones", ln=True, fill=True)
         pdf.set_text_color(0, 0, 0)
         for titulo, fig in figuras:
-            img_buf = io.BytesIO()
-            fig.write_image(img_buf, format="png", width=900, height=420, scale=1.5)
-            img_buf.seek(0)
             pdf.ln(4)
             pdf.set_font("Helvetica", "B", 10)
-            pdf.cell(0, 7, titulo, ln=True)
-            pdf.image(img_buf, x=10, w=185)
+            pdf.set_x(10)
+            pdf.cell(190, 7, titulo.encode('latin-1', 'replace').decode('latin-1'), ln=True)
+            try:
+                img_buf = io.BytesIO()
+                fig.write_image(img_buf, format="png", width=900, height=420, scale=1.5)
+                img_buf.seek(0)
+                pdf.image(img_buf, x=10, w=185)
+            except Exception:
+                pdf.set_font("Helvetica", "I", 9)
+                pdf.set_text_color(150, 150, 150)
+                pdf.set_x(10)
+                pdf.cell(190, 7, "(Imagen no disponible en este entorno)", ln=True)
+                pdf.set_text_color(0, 0, 0)
             pdf.ln(3)
     return bytes(pdf.output())
 
@@ -408,7 +416,7 @@ if "GEMINI_API_KEY" in st.secrets:
         submit = st.form_submit_button("Consultar y Ajustar Dashboard 🚀")
 
     if submit and user_query:
-        with st.spinner("Analizando con resiliencia de Cloud Architect..."):
+        with st.spinner("Analizando con inteligencia artificial..."):
             contexto = df_f[['Alumno_Full', 'Nombre catedrático', 'Nombre Asignatura', 'CF.', 'Total_Faltas', '%Asis', 'P1', 'P2', 'P3']].to_csv(index=False)
             prompt = f"Analista UPAEP. Datos: {contexto}. Pregunta: {user_query}. Si hay foco, añade al final [TAG: Nombre Exacto]."
             
